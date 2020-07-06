@@ -230,19 +230,30 @@ public class FileCompare
                         thread.Start();
                     }
             }
-            while (workCount > 0)
+            foreach (var item in threadList)
+                item.Join();
+            //while (workCount > 0)
+            //{
+            //    Thread.Sleep(100);
+            //    if (threadList.Find(x => x.IsAlive) == null && workCount > 0)
+            //    {
+            //        diffFileList.Insert(0, ErrorMark + "线程非正常终止！workCount:" + workCount);
+            //        break;
+            //    }
+            //}
+            //校验
+            for (int i = 0; i < diffFileList.Count; i++)
             {
-                Thread.Sleep(100);
-                if (threadList.Find(x => x.IsAlive) == null && workCount > 0)
+                if (!Directory.Exists(diffFileList[i]) && !File.Exists(diffFileList[i]))
                 {
-                    diffFileList.Insert(0, ErrorMark + "线程非正常终止！workCount:" + workCount);
+                    diffFileList.Insert(0, ErrorMark + "出现错误路径！Index: " + i);
                     break;
                 }
             }
         }
         else
         {
-            if (onStep != null)
+            if (onStep != null && Info.ShowProgress)
             {
                 //用于执行统计进度
                 totalProcessCount = Directory.GetDirectories(_info.RightComprePath, "*", SearchOption.AllDirectories).Length + 1;
@@ -251,9 +262,7 @@ public class FileCompare
             CompareDirectory(_info.LeftComprePath, _info.RightComprePath, diffFileList, onStep, totalProcessCount, ref curProcessCount, true);
         }
         bool isSuccess = diffFileList.Count > 0 ? (diffFileList[0].StartsWith(ErrorMark) ? false : true) : true;
-        if (!isSuccess)
-            diffFileList = new List<string>() { diffFileList[0] };
-        else if (SortByDate)
+        if (isSuccess && SortByDate)
             SortPathByDate(diffFileList);
 
         if (onEnd != null) onEnd.Invoke(isSuccess, diffFileList);
@@ -294,17 +303,27 @@ public class FileCompare
             thread.Start();
         }
 
-        while (workCount > 0)
+        foreach (var item in threadList)
+            item.Join();
+        //while (workCount > 0)
+        //{
+        //    //if (threadCheckList.FindAll(x => !x).Count < 1) break;
+        //    Thread.Sleep(10);
+        //    if (threadList.Find(x => x.IsAlive) == null && workCount > 0)
+        //    {
+        //        CompareDirectory(left, right, diffFileList, onStep, totalProcessCount, ref curProcessCount, true);
+        //        return;
+        //    }
+        //}
+        lock (diffFileList)
         {
-            //if (threadCheckList.FindAll(x => !x).Count < 1) break;
-            Thread.Sleep(10);
-            if (threadList.Find(x => x.IsAlive) == null && workCount > 0)
-            {
-                CompareDirectory(left, right, diffFileList, onStep, totalProcessCount, ref curProcessCount, true);
-                return;
-            }
+            diffFileList.AddRange(tempDiffList);
+            //foreach (var strPath in diffFileList)
+            //{
+            //    if (string.IsNullOrEmpty(strPath))
+            //        Debug.LogError("Null Path");
+            //}
         }
-        diffFileList.AddRange(tempDiffList);
         //文件比较完成
         curProcessCount++;
         if (onStep != null)
@@ -430,6 +449,16 @@ public class FileCompare
         /// 比较完成后，若双方文件内容一致，日期不一致，是否修改比较对象日期为源文件日期
         /// </summary>
         public bool IsSyncFileDate = false;
+
+        /// <summary>
+        /// 是否排序
+        /// </summary>
+        public bool SortByDate = true;
+
+        /// <summary>
+        /// 进度，针对Normal模式，false可减少时间消耗
+        /// </summary>
+        public bool ShowProgress = true;
 
         /// <summary>
         /// 比较时排除的文件后缀，小写

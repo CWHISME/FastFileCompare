@@ -73,7 +73,7 @@ public class FileCompareWindow : EditorWindow
             _compareStopWatch = Stopwatch.StartNew();
             _compareStopWatch.Start();
             if (_thread != null) _thread.Abort();
-            _thread = _fileCompare.Compare(OnCompareStep, OnCompareEnd, true);
+            _thread = _fileCompare.Compare(OnCompareStep, OnCompareEnd, _fileCompare.Info.SortByDate);
         }
         //文件筛选设置
         GUILayout.Space(10);
@@ -160,7 +160,6 @@ public class FileCompareWindow : EditorWindow
         if (!isSuccess)
         {
             _allCompareResultString.Add(string.Format("<color=red>出现错误！对比失败：{0}</color>", list[0]));
-            list.Clear();
         }
         _compareResult = list;
         _isComparing = false;
@@ -169,13 +168,21 @@ public class FileCompareWindow : EditorWindow
         string nowStringTip = "[<color=#5ADD53FF>今日修改！</color>]";
         string dirTip = "[<color=yellow>文件夹</color>]";
         int limitNum = 0;
+        string strTemp;
         for (int i = 0; i < _compareResult.Count; i++)
         {
-            DateTime date = /*Directory.Exists(_compareResult[i]) ? Directory.GetLastWriteTime(_compareResult[i]) :*/ File.GetLastWriteTime(_compareResult[i]);
+            strTemp = _compareResult[i];
+            bool exist = Directory.Exists(strTemp) || File.Exists(strTemp);
+            DateTime date = exist ? File.GetLastWriteTime(strTemp) : DateTime.MaxValue;
+            if (!exist)
+            {
+                builder.AppendLine(string.Format("<color=red>内部错误：{0}</color>", strTemp));
+                continue;
+            }
             string str;
             bool isNow = (date.Year == nowTime.Year && date.DayOfYear == nowTime.DayOfYear);
-            bool isDir = Directory.Exists(_compareResult[i]);
-            str = (string.Format("{0}. {3}[{1}] {2}{4}", (i + 1).ToString().PadLeft(3, '0'), date.ToString("yyyy-MM-dd hh:mm:ss"), _compareResult[i], isNow ? nowStringTip : string.Empty, isDir ? dirTip : string.Empty));
+            bool isDir = Directory.Exists(strTemp);
+            str = (string.Format("{0}. {3}[{1}] {2}{4}", (i + 1).ToString().PadLeft(3, '0'), date.ToString("yyyy-MM-dd hh:mm:ss"), strTemp, isNow ? nowStringTip : string.Empty, isDir ? dirTip : string.Empty));
             builder.AppendLine(str);
             limitNum++;
             if (limitNum > 99)
@@ -250,6 +257,9 @@ public class FileCompareWindow : EditorWindow
         _fileCompare.Info.IsCompareFileDate = EditorGUILayout.ToggleLeft("日期对比", _fileCompare.Info.IsCompareFileDate, GUILayout.Width(70));
         if (_fileCompare.Info.IsCompareFileDate)
             _fileCompare.Info.IsSyncFileDate = EditorGUILayout.ToggleLeft("同步日期", _fileCompare.Info.IsSyncFileDate, GUILayout.Width(70));
+        if (_fileCompare.Info.CompareMode == FileCompare.ECompareMode.Normal)
+            _fileCompare.Info.ShowProgress = EditorGUILayout.ToggleLeft("进度统计", _fileCompare.Info.ShowProgress, GUILayout.Width(70));
+        _fileCompare.Info.SortByDate = EditorGUILayout.ToggleLeft("日期排序", _fileCompare.Info.SortByDate, GUILayout.Width(70));
         if (EditorGUI.EndChangeCheck())
             Save();
         EditorGUILayout.EndHorizontal();
@@ -303,6 +313,7 @@ public class FileCompareWindow : EditorWindow
     /// </summary>
     private void CheckDisplayProgress()
     {
+        if (_fileCompare.Info.CompareMode == FileCompare.ECompareMode.Normal && !_fileCompare.Info.ShowProgress) return;
         if (_isComparing || _isInCreatePatch)
         {
             if (!_isComparingUI)
