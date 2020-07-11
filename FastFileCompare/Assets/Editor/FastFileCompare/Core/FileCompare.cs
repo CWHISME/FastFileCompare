@@ -203,7 +203,6 @@ public class FileCompare
             CompareDirectory(_info.LeftComprePath, _info.RightComprePath, diffFileList, onStep, totalProcessCount, ref curProcessCount, false);
             //比较子目录
             List<Thread> threadList = new List<Thread>();
-            object locker = new object();
             for (int i = 0; i < dirs.Length; i++)
             {
                 string path = dirs[i];
@@ -216,7 +215,10 @@ public class FileCompare
                 //该操作是为了与正常比较模式保持一致，且优化部分性能
                 if (Directory.Exists(Path.GetDirectoryName(leftFilePath)))
                     if (!Directory.Exists(leftFilePath))
-                        diffFileList.Add(path);
+                        lock (this)
+                        {
+                            diffFileList.Add(path);
+                        }
                     else
                     {
                         workCount++;
@@ -232,15 +234,6 @@ public class FileCompare
             }
             foreach (var item in threadList)
                 item.Join();
-            //while (workCount > 0)
-            //{
-            //    Thread.Sleep(100);
-            //    if (threadList.Find(x => x.IsAlive) == null && workCount > 0)
-            //    {
-            //        diffFileList.Insert(0, ErrorMark + "线程非正常终止！workCount:" + workCount);
-            //        break;
-            //    }
-            //}
             //校验
             for (int i = 0; i < diffFileList.Count; i++)
             {
@@ -285,7 +278,10 @@ public class FileCompare
             //不存在，说明为新增，直接添加至列表
             if (!File.Exists(leftFilePath))
             {
-                diffFileList.Add(rightFile);
+                lock (this)
+                {
+                    diffFileList.Add(rightFile);
+                }
                 continue;
             }
             //日期对比
@@ -315,7 +311,7 @@ public class FileCompare
         //        return;
         //    }
         //}
-        lock (diffFileList)
+        lock (this)
         {
             diffFileList.AddRange(tempDiffList);
             //foreach (var strPath in diffFileList)
@@ -338,7 +334,10 @@ public class FileCompare
             //不存在，新增则直接添加至列表
             if (!Directory.Exists(leftFilePath))
             {
-                diffFileList.Add(rightDir);
+                lock (this)
+                {
+                    diffFileList.Add(rightDir);
+                }
                 continue;
             }
             //循环处理
@@ -366,7 +365,10 @@ public class FileCompare
         if (infoRight.Length != infoLeft.Length)
         {
             diff = true;
-            diffFileList.Add(rightFile);
+            lock (this)
+            {
+                diffFileList.Add(rightFile);
+            }
         }
         else
         //实际文件二进制对比，比较慢
@@ -386,7 +388,10 @@ public class FileCompare
                             if (tempRArray[i] != tempLArray[i])
                             {
                                 diff = true;
-                                diffFileList.Add(rightFile);
+                                lock (this)
+                                {
+                                    diffFileList.Add(rightFile);
+                                }
                                 break;
                             }
                         }
@@ -396,7 +401,10 @@ public class FileCompare
             catch (Exception ex)
             {
                 string error = string.Format("{0},{1}{2}  路径位于：Left:{3}\nRight{4}", ErrorMark, ex.Message, ex.StackTrace, leftFile, rightFile);
-                diffFileList.Insert(0, error);
+                lock (this)
+                {
+                    diffFileList.Insert(0, error);
+                }
                 Debug.LogError(error);
                 return;
             }
@@ -477,8 +485,9 @@ public class FileCompare
 
         /// <summary>
         /// Super比较算法使用，最大线程数量限制
+        /// 注：这里指文件夹，文件还会额外并发
         /// </summary>
-        public int CompareThreadLimit = 100;
+        public int CompareThreadLimit = 120;
 
         /// <summary>
         /// BeyondCompare 程序路径

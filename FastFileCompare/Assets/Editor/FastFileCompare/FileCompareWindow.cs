@@ -23,10 +23,15 @@ public class FileCompareWindow : EditorWindow
 
     //处于文件比较中
     private bool _isComparing = false;
+    //是否正在显示进度条
     private bool _isComparingUI = false;
+    //进度信息
     private int _compareCurProcess, _compareMaxProcess;
+    //创建补丁中
     private bool _isInCreatePatch = false;
+    //是否处于创建补丁的提示进度
     private bool _isPatchingUI = false;
+    //补丁创建成功后，返回的存储目录
     private string _patchingPath;
     //文件比较结果，差异文件列表
     private List<string> _compareResult;
@@ -89,6 +94,8 @@ public class FileCompareWindow : EditorWindow
         infoTipBuilder.AppendLine("比较时，将以 “对比目录” 数据为基础与原始目录进行比较，并得出差异化文件或目录。");
         if (_fileCompare.Info.IsCompareFileDate)
             infoTipBuilder.AppendLine("勾选同步日期时，在两个文件二进制一致情况， 会同步对比目录与原始目录一致。第一次对比时长会增加，不过同时会减少下次对比时消耗的时间。");
+        if (_fileCompare.Info.CompareMode == FileCompare.ECompareMode.Super_Ex)
+            infoTipBuilder.AppendLine("注：线程数量限制针对于文件夹，文件对比时还会额外并发。");
         EditorGUILayout.HelpBox(infoTipBuilder.ToString(), MessageType.Info);
 
         //计数器
@@ -107,20 +114,6 @@ public class FileCompareWindow : EditorWindow
             {
                 EditorGUILayout.LabelField(item, _normalRichTextStyle);
             }
-            //DateTime nowTime = DateTime.Now;
-            //for (int i = 0; i < _compareResult.Count; i++)
-            //{
-            //    DateTime date = /*Directory.Exists(_compareResult[i]) ? Directory.GetLastWriteTime(_compareResult[i]) :*/ File.GetLastWriteTime(_compareResult[i]);
-            //    if (date.Year == nowTime.Year && date.DayOfYear == nowTime.DayOfYear)
-            //        EditorGUILayout.LabelField(string.Format("{0}. [<color=#5ADD53FF>今日修改！</color>][{1}] {2}", (i + 1), date.ToString("yyyy-MM-dd hh:mm:ss"), _compareResult[i]), _normalRichTextStyle);
-            //    else EditorGUILayout.LabelField(string.Format("{0}. [{1}] {2}", (i + 1), date.ToString("yyyy-MM-dd hh:mm:ss"), _compareResult[i]), _normalRichTextStyle);
-            //    if (i > 201)
-            //    {
-            //        EditorGUILayout.LabelField("************************************超出预览数量限制！************************************");
-            //        EditorGUILayout.LabelField("************************************超出预览数量限制！************************************");
-            //        break;
-            //    }
-            //}
             EditorGUILayout.EndScrollView();
             EditorGUILayout.EndVertical();
         }
@@ -130,7 +123,7 @@ public class FileCompareWindow : EditorWindow
         CheckDisplayProgress();
     }
 
-    private void Update()
+    private void OnInspectorUpdate()
     {
         Repaint();
     }
