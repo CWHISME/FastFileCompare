@@ -137,16 +137,18 @@ public class FileCompare
             if (onEnd != null) onEnd.Invoke("");
             return;
         };
-        string targetPath = Path.Combine(Info.DiffPatchPath, string.Format("{0}_{1}_{2}_[{3}]", Application.platform, Info.LastVersion, DateTime.Now.ToString("yyyyMMdd-hhmm-ss"), suffix));
+        string targetPath = Path.Combine(Info.DiffPatchPath, string.Format("{0}_{1}_{2}_[{3}]", Application.platform, Info.LastVersion, DateTime.Now.ToString("yyyyMMdd-HHmm-ss"), suffix));
         if (Directory.Exists(targetPath))
             Directory.Delete(targetPath, true);
         Directory.CreateDirectory(targetPath);
         Thread thread = new Thread(new ThreadStart(() =>
         {
+            string tempPath;
             for (int i = 0; i < path.Count; i++)
             {
                 if (onStep != null) onStep.Invoke(i, path.Count);
-                Copy(path[i], GetLeftPathByRightPath(targetPath, Info.RightComprePath, path[i]));
+                tempPath = Info.CreatePatchUseLeftFile.Contains(path[i]) ? GetLeftPathByRightPath(Info.LeftComprePath, Info.RightComprePath, path[i]) : path[i];
+                Copy(tempPath, GetLeftPathByRightPath(targetPath, Info.RightComprePath, path[i]));
             }
             if (compress)
             {
@@ -182,8 +184,31 @@ public class FileCompare
         {
             if (!Directory.Exists(Path.GetDirectoryName(to)))
                 Directory.CreateDirectory(Path.GetDirectoryName(to));
-            File.Copy(from, to, true);
+            if (File.Exists(from))
+                File.Copy(from, to, true);
         }
+    }
+
+    /// <summary>
+    /// 在对比源目录下，获取同名文件/目录
+    /// </summary>
+    /// <param name="rightSinglePath">处于新文件目录下，一个文件或子目录</param>
+    /// <returns></returns>
+    public string GetLeftPathByRightPath(string rightSinglePath)
+    {
+        return GetLeftPathByRightPath(Info.LeftComprePath, Info.RightComprePath, rightSinglePath);
+    }
+
+    /// <summary>
+    /// 在对比源目录下，获取同名文件/目录
+    /// </summary>
+    /// <param name="left">源目录</param>
+    /// <param name="right">新文件目录</param>
+    /// <param name="rightSinglePath">处于新文件目录下，一个文件或子目录</param>
+    /// <returns></returns>
+    public string GetLeftPathByRightPath(string left, string right, string rightSinglePath)
+    {
+        return left + rightSinglePath.Replace(right, "");
     }
     //=====================================================
 
@@ -197,7 +222,8 @@ public class FileCompare
         {
             string[] dirs = Directory.GetDirectories(_info.RightComprePath, "*", SearchOption.AllDirectories);
             totalProcessCount = dirs.Length + 1;
-            onStep.Invoke(curProcessCount, totalProcessCount);
+            if (onStep != null)
+                onStep.Invoke(curProcessCount, totalProcessCount);
             int workCount = 0;
             //比较主目录
             CompareDirectory(_info.LeftComprePath, _info.RightComprePath, diffFileList, onStep, totalProcessCount, ref curProcessCount, false);
@@ -255,8 +281,16 @@ public class FileCompare
             CompareDirectory(_info.LeftComprePath, _info.RightComprePath, diffFileList, onStep, totalProcessCount, ref curProcessCount, true);
         }
         bool isSuccess = diffFileList.Count > 0 ? (diffFileList[0].StartsWith(ErrorMark) ? false : true) : true;
-        if (isSuccess && SortByDate)
-            SortPathByDate(diffFileList);
+        if (isSuccess)
+        {
+            if (SortByDate)
+                SortPathByDate(diffFileList);
+            //处理斜杠，为后续存储列表作准备
+            for (int i = 0; i < diffFileList.Count; i++)
+            {
+                diffFileList[i] = Path.GetFullPath(diffFileList[i]).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            }
+        }
 
         if (onEnd != null) onEnd.Invoke(isSuccess, diffFileList);
     }
@@ -343,18 +377,6 @@ public class FileCompare
             //循环处理
             CompareDirectory(leftFilePath, rightDir, diffFileList, onStep, totalProcessCount, ref curProcessCount, true);
         }
-    }
-
-    /// <summary>
-    /// 在对比源目录下，获取同名文件/目录
-    /// </summary>
-    /// <param name="left">源目录</param>
-    /// <param name="right">新文件目录</param>
-    /// <param name="rightSinglePath">处于新文件目录下，一个文件或子目录</param>
-    /// <returns></returns>
-    private string GetLeftPathByRightPath(string left, string right, string rightSinglePath)
-    {
-        return left + rightSinglePath.Replace(right, "");
     }
 
     private void CompareSingleFile(string leftFile, string rightFile, List<string> diffFileList)
@@ -495,6 +517,11 @@ public class FileCompare
         public string BeyondCompareExePath;
 
         /// <summary>
+        /// 创建补丁时，使用源目录中文件(如果源目录存在该文件)
+        /// </summary>
+        public List<string> CreatePatchUseLeftFile = new List<string>();
+
+        /// <summary>
         /// 检查路径后缀，是否存在排除列表中
         /// </summary>
         /// <param name="path"></param>
@@ -524,11 +551,11 @@ public class FileCompare
 
         public void SetExludeSuffixString(string str)
         {
-            string[] strList = str.Split('|');
+            string[] strList = str.ToLower().Split('|');
             ExcludeSuffix = new string[strList.Length];
             for (int i = 0; i < ExcludeSuffix.Length; i++)
             {
-                ExcludeSuffix[i] = strList[i];
+                ExcludeSuffix[i] = strList[i].Trim();
             }
         }
     }

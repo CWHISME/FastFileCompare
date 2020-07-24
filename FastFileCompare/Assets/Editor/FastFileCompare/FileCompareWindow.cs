@@ -35,7 +35,12 @@ public class FileCompareWindow : EditorWindow
     private string _patchingPath;
     //文件比较结果，差异文件列表
     private List<string> _compareResult;
-    private List<string> _allCompareResultString;
+    private List<string> _compareResultDis;
+    //private List<string> _allCompareResultString;
+    //翻页相关
+    private const int _pagePerCount = 50;
+    private int _pageMaxCount;
+    private int _pageIndex = 0;
 
     private Vector2 _diffFileScrollPos;
     private Stopwatch _compareStopWatch;
@@ -104,19 +109,40 @@ public class FileCompareWindow : EditorWindow
                 EditorGUILayout.LabelField(CalcStopWatchString());
             else EditorGUILayout.LabelField(_compareStopWatchDisplayString);
         //若比较结果存在，则显示出来
-        if (_compareResult != null && _allCompareResultString != null)
+        _compareResultDis = _compareResult;
+        if (_compareResultDis != null)
         {
             DrawPatchBtn();
-            EditorGUILayout.LabelField(string.Format("  共对比<color=yellow>{0}</color>个文件目录，差异文件数量：<color=#00F4FFFF>{1}</color>个", _compareMaxProcess, _compareResult.Count), _normalRichTextStyle);
+            EditorGUILayout.LabelField(string.Format("  共对比<color=yellow>{0}</color>个文件目录，差异文件数量：<color=#00F4FFFF>{1}</color>个", _compareMaxProcess, _compareResultDis.Count), _normalRichTextStyle);
             EditorGUILayout.BeginVertical(GUI.skin.box);
             _diffFileScrollPos = EditorGUILayout.BeginScrollView(_diffFileScrollPos);
-            foreach (var item in _allCompareResultString)
+            int thisPageIndex = _pageIndex * _pagePerCount;
+            for (int i = thisPageIndex; i < _compareResultDis.Count && i < thisPageIndex + _pagePerCount; i++)
             {
-                EditorGUILayout.LabelField(item, _normalRichTextStyle);
+                string path = _compareResultDis[i];
+                EditorGUILayout.BeginHorizontal();
+                if (GUILayout.Button("O", GUILayout.Width(20)))
+                    EditorUtility.OpenWithDefaultApp(Path.GetDirectoryName(_compareResultDis[i]));
+                bool useLeftFile = _fileCompare.Info.CreatePatchUseLeftFile.Contains(path);
+                EditorGUI.BeginChangeCheck();
+                useLeftFile = EditorGUILayout.Toggle(useLeftFile, GUILayout.Width(10));
+                if (EditorGUI.EndChangeCheck())
+                {
+                    if (useLeftFile && !_fileCompare.Info.CreatePatchUseLeftFile.Contains(path))
+                        _fileCompare.Info.CreatePatchUseLeftFile.Add(path);
+                    else _fileCompare.Info.CreatePatchUseLeftFile.Remove(path);
+                    Save();
+                }
+                EditorGUILayout.LabelField(CalcDisplayPathStr(i + 1, path), _normalRichTextStyle);
+                EditorGUILayout.EndHorizontal();
             }
             EditorGUILayout.EndScrollView();
             EditorGUILayout.EndVertical();
+
+            DrawCreatePatchUseLeftFileSetting();
+            GUILayout.Space(20);
         }
+        DrawPageSetting();
         GUI.enabled = true;
 
         //检查是否显示/清理比较进度条
@@ -149,44 +175,49 @@ public class FileCompareWindow : EditorWindow
     /// <param name="list"></param>
     private void OnCompareEnd(bool isSuccess, List<string> list)
     {
-        _allCompareResultString = new List<string>();
-        if (!isSuccess)
-        {
-            _allCompareResultString.Add(string.Format("<color=red>出现错误！对比失败：{0}</color>", list[0]));
-        }
+        //_allCompareResultString = new List<string>();
+        //if (!isSuccess)
+        //{
+        //    _allCompareResultString.Add(string.Format("<color=red>出现错误！对比失败：{0}</color>", list[0]));
+        //}
+        //else
+        //{
         _compareResult = list;
+        //}
         _isComparing = false;
-        StringBuilder builder = new StringBuilder();
-        DateTime nowTime = DateTime.Now;
-        string nowStringTip = "[<color=#5ADD53FF>今日修改！</color>]";
-        string dirTip = "[<color=yellow>文件夹</color>]";
-        int limitNum = 0;
-        string strTemp;
-        for (int i = 0; i < _compareResult.Count; i++)
-        {
-            strTemp = _compareResult[i];
-            bool exist = Directory.Exists(strTemp) || File.Exists(strTemp);
-            DateTime date = exist ? File.GetLastWriteTime(strTemp) : DateTime.MaxValue;
-            if (!exist)
-            {
-                builder.AppendLine(string.Format("<color=red>内部错误：{0}</color>", strTemp));
-                continue;
-            }
-            string str;
-            bool isNow = (date.Year == nowTime.Year && date.DayOfYear == nowTime.DayOfYear);
-            bool isDir = Directory.Exists(strTemp);
-            str = (string.Format("{0}. {3}[{1}] {2}{4}", (i + 1).ToString().PadLeft(3, '0'), date.ToString("yyyy-MM-dd hh:mm:ss"), strTemp, isNow ? nowStringTip : string.Empty, isDir ? dirTip : string.Empty));
-            builder.AppendLine(str);
-            limitNum++;
-            if (limitNum > 99)
-            {
-                limitNum = 0;
-                builder.Remove(builder.Length - 2, 2);
-                _allCompareResultString.Add(builder.ToString());
-                builder.Remove(0, builder.Length);
-            }
-        }
-        _allCompareResultString.Add(builder.ToString());
+        _pageMaxCount = Mathf.CeilToInt(_compareResult.Count / (float)_pagePerCount);
+        _pageIndex = 0;
+        //StringBuilder builder = new StringBuilder();
+        //DateTime nowTime = DateTime.Now;
+        //string nowStringTip = "[<color=#5ADD53FF>今日修改！</color>]";
+        //string dirTip = "[<color=yellow>文件夹</color>]";
+        //int limitNum = 0;
+        //string strTemp;
+        //for (int i = 0; i < _compareResult.Count; i++)
+        //{
+        //    strTemp = _compareResult[i];
+        //    bool exist = Directory.Exists(strTemp) || File.Exists(strTemp);
+        //    DateTime date = exist ? File.GetLastWriteTime(strTemp) : DateTime.MaxValue;
+        //    if (!exist)
+        //    {
+        //        builder.AppendLine(string.Format("<color=red>内部错误：{0}</color>", strTemp));
+        //        continue;
+        //    }
+        //    string str;
+        //    bool isNow = (date.Year == nowTime.Year && date.DayOfYear == nowTime.DayOfYear);
+        //    bool isDir = Directory.Exists(strTemp);
+        //    str = (string.Format("{0}. {3}[{1}] {2}{4}", (i + 1).ToString().PadLeft(3, '0'), date.ToString("yyyy-MM-dd hh:mm:ss"), strTemp, isNow ? nowStringTip : string.Empty, isDir ? dirTip : string.Empty));
+        //    builder.AppendLine(str);
+        //    limitNum++;
+        //    if (limitNum > 99)
+        //    {
+        //        limitNum = 0;
+        //        builder.Remove(builder.Length - 2, 2);
+        //        _allCompareResultString.Add(builder.ToString());
+        //        builder.Remove(0, builder.Length);
+        //    }
+        //}
+        //_allCompareResultString.Add(builder.ToString());
         _compareStopWatch.Stop();
         _compareStopWatchDisplayString = CalcStopWatchString();
     }
@@ -206,6 +237,29 @@ public class FileCompareWindow : EditorWindow
     private string CalcStopWatchString()
     {
         return (string.Format("**********************************消耗：{0}:{1}:{2}************************************", _compareStopWatch.Elapsed.Minutes.ToString().PadLeft(2, '0'), _compareStopWatch.Elapsed.Seconds.ToString().PadLeft(2, '0'), _compareStopWatch.Elapsed.Milliseconds.ToString().PadLeft(3, '0')));
+    }
+
+    private string _nowStringTip = "[<color=#5ADD53FF>今日修改！</color>]";
+    private string _dirTip = "[<color=yellow>文件夹</color>]";
+    private string CalcDisplayPathStr(int index, string path)
+    {
+        bool exist = Directory.Exists(path) || File.Exists(path);
+        DateTime date = exist ? File.GetLastWriteTime(path) : DateTime.MaxValue;
+        if (!exist)
+        {
+            return (string.Format("<color=red>内部错误：{0}</color>", path));
+        }
+        bool isNow = (date.Year == DateTime.Now.Year && date.DayOfYear == DateTime.Now.DayOfYear);
+        bool isDir = Directory.Exists(path);
+        string isNullStr = "";
+        if (_fileCompare.Info.CreatePatchUseLeftFile.Contains(path))
+        {
+            path = _fileCompare.GetLeftPathByRightPath(path);
+            if (!Directory.Exists(path) && !File.Exists(path))
+                isNullStr = "<color=red>原始目录资源不存在！</color>";
+            path = string.Format("<b>{0}</b>", path);
+        }
+        return (string.Format("{0}. {3}[{1}] {2}{4} {5}", (index).ToString().PadLeft(3, '0'), date.ToString("yyyy-MM-dd hh:mm:ss"), path, isNow ? _nowStringTip : string.Empty, isDir ? _dirTip : string.Empty, isNullStr));
     }
     //================UI封装============================
     /// <summary>
@@ -275,7 +329,7 @@ public class FileCompareWindow : EditorWindow
             EditorGUILayout.BeginHorizontal();
 
             EditorGUILayout.LabelField("排除后缀文件：");
-            _suffixExcludeString = EditorGUILayout.TextField(_suffixExcludeString);
+            _suffixExcludeString = EditorGUILayout.TextArea(_suffixExcludeString, GUILayout.Height(50));
             if (GUILayout.Button("确定", GUILayout.Width(70)))
             {
                 _fileCompare.Info.SetExludeSuffixString(_suffixExcludeString);
@@ -299,6 +353,66 @@ public class FileCompareWindow : EditorWindow
                 _editExcludeSuffix = true;
             }
         }
+    }
+
+    /// <summary>
+    /// 创建补丁使用源 设置
+    /// </summary>
+    private void DrawCreatePatchUseLeftFileSetting()
+    {
+        EditorGUILayout.BeginHorizontal();
+        if (GUILayout.Button("全选", GUILayout.Width(70)))
+        {
+            if (EditorUtility.DisplayDialog("提示", "该操作将会使创建补丁时，当前所有差异文件均使用源目录中同路径文件，是否确认选择？", "确定", "取消"))
+            {
+                _fileCompare.Info.CreatePatchUseLeftFile.Clear();
+                _fileCompare.Info.CreatePatchUseLeftFile.AddRange(_compareResult);
+                Save();
+            }
+        }
+        if (GUILayout.Button("清空", GUILayout.Width(70)))
+        {
+            if (EditorUtility.DisplayDialog("提示", "是否确认清空使用源的路径选择？", "确定", "取消"))
+            {
+                _fileCompare.Info.CreatePatchUseLeftFile.Clear();
+                Save();
+            }
+        }
+        EditorGUILayout.LabelField("<color=#4DFF7AFF>勾选选中框，代表创建补丁时，使用源目录同路径下文件(若存在)</color>", _normalRichTextStyle);
+        EditorGUILayout.EndHorizontal();
+    }
+
+    /// <summary>
+    /// 翻页设置
+    /// </summary>
+    private void DrawPageSetting()
+    {
+        //if (_pageMaxCount < 2) return;
+        Vector2 startPos = new Vector2(position.width - 115, position.height - 30);
+        Vector2 buttonSize = new Vector2(20, 20);
+        if (GUI.Button(CalcRect(ref startPos, 20, 20), "<"))
+            HoldPageIndex(_pageIndex - 1);
+        _normalRichTextStyle.alignment = TextAnchor.UpperCenter;
+        EditorGUI.LabelField(CalcRect(ref startPos, 65, 30), string.Format("第{0}/{1}页", _pageIndex + 1, _pageMaxCount), _normalRichTextStyle);
+        _normalRichTextStyle.alignment = TextAnchor.UpperLeft;
+        if (GUI.Button(CalcRect(ref startPos, 20, 20), ">"))
+            HoldPageIndex(_pageIndex + 1);
+    }
+
+    private Rect CalcRect(ref Vector2 startPos, int width, int height)
+    {
+        Rect rect = new Rect(startPos, new Vector2(width, height));
+        startPos.x = startPos.x + width;
+        return rect;
+    }
+
+    private void HoldPageIndex(int index)
+    {
+        if (index < 0)
+            index = 0;
+        else if (index >= _pageMaxCount)
+            index = _pageMaxCount - 1;
+        _pageIndex = index;
     }
 
     /// <summary>
