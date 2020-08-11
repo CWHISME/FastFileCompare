@@ -96,11 +96,11 @@ public class FileCompareWindow : EditorWindow
         DrawCompareToggleSetting();
         //帮助提示
         StringBuilder infoTipBuilder = new StringBuilder();
-        infoTipBuilder.AppendLine("比较时，将以 “对比目录” 数据为基础与原始目录进行比较，并得出差异化文件或目录。");
+        infoTipBuilder.AppendLine(LangHelp1);
         if (_fileCompare.Info.IsCompareFileDate)
-            infoTipBuilder.AppendLine("勾选同步日期时，在两个文件二进制一致情况， 会同步对比目录与原始目录一致。第一次对比时长会增加，不过同时会减少下次对比时消耗的时间。");
+            infoTipBuilder.AppendLine(LangHelp2);
         if (_fileCompare.Info.CompareMode == FileCompare.ECompareMode.Super_Ex)
-            infoTipBuilder.AppendLine("注：线程数量限制针对于文件夹，文件对比时还会额外并发。");
+            infoTipBuilder.AppendLine(LangHelp3);
         EditorGUILayout.HelpBox(infoTipBuilder.ToString(), MessageType.Info);
 
         //计数器
@@ -113,7 +113,7 @@ public class FileCompareWindow : EditorWindow
         if (_compareResultDis != null)
         {
             DrawPatchBtn();
-            EditorGUILayout.LabelField(string.Format("  共对比<color=yellow>{0}</color>个文件目录，差异文件数量：<color=#00F4FFFF>{1}</color>个", _compareMaxProcess, _compareResultDis.Count), _normalRichTextStyle);
+            EditorGUILayout.LabelField(string.Format(LangCompareSummaryTips, _compareMaxProcess, _compareResultDis.Count), _normalRichTextStyle);
             EditorGUILayout.BeginVertical(GUI.skin.box);
             _diffFileScrollPos = EditorGUILayout.BeginScrollView(_diffFileScrollPos);
             int thisPageIndex = _pageIndex * _pagePerCount;
@@ -175,49 +175,10 @@ public class FileCompareWindow : EditorWindow
     /// <param name="list"></param>
     private void OnCompareEnd(bool isSuccess, List<string> list)
     {
-        //_allCompareResultString = new List<string>();
-        //if (!isSuccess)
-        //{
-        //    _allCompareResultString.Add(string.Format("<color=red>出现错误！对比失败：{0}</color>", list[0]));
-        //}
-        //else
-        //{
         _compareResult = list;
-        //}
         _isComparing = false;
         _pageMaxCount = Mathf.CeilToInt(_compareResult.Count / (float)_pagePerCount);
         _pageIndex = 0;
-        //StringBuilder builder = new StringBuilder();
-        //DateTime nowTime = DateTime.Now;
-        //string nowStringTip = "[<color=#5ADD53FF>今日修改！</color>]";
-        //string dirTip = "[<color=yellow>文件夹</color>]";
-        //int limitNum = 0;
-        //string strTemp;
-        //for (int i = 0; i < _compareResult.Count; i++)
-        //{
-        //    strTemp = _compareResult[i];
-        //    bool exist = Directory.Exists(strTemp) || File.Exists(strTemp);
-        //    DateTime date = exist ? File.GetLastWriteTime(strTemp) : DateTime.MaxValue;
-        //    if (!exist)
-        //    {
-        //        builder.AppendLine(string.Format("<color=red>内部错误：{0}</color>", strTemp));
-        //        continue;
-        //    }
-        //    string str;
-        //    bool isNow = (date.Year == nowTime.Year && date.DayOfYear == nowTime.DayOfYear);
-        //    bool isDir = Directory.Exists(strTemp);
-        //    str = (string.Format("{0}. {3}[{1}] {2}{4}", (i + 1).ToString().PadLeft(3, '0'), date.ToString("yyyy-MM-dd hh:mm:ss"), strTemp, isNow ? nowStringTip : string.Empty, isDir ? dirTip : string.Empty));
-        //    builder.AppendLine(str);
-        //    limitNum++;
-        //    if (limitNum > 99)
-        //    {
-        //        limitNum = 0;
-        //        builder.Remove(builder.Length - 2, 2);
-        //        _allCompareResultString.Add(builder.ToString());
-        //        builder.Remove(0, builder.Length);
-        //    }
-        //}
-        //_allCompareResultString.Add(builder.ToString());
         _compareStopWatch.Stop();
         _compareStopWatchDisplayString = CalcStopWatchString();
     }
@@ -236,18 +197,16 @@ public class FileCompareWindow : EditorWindow
 
     private string CalcStopWatchString()
     {
-        return (string.Format("**********************************消耗：{0}:{1}:{2}************************************", _compareStopWatch.Elapsed.Minutes.ToString().PadLeft(2, '0'), _compareStopWatch.Elapsed.Seconds.ToString().PadLeft(2, '0'), _compareStopWatch.Elapsed.Milliseconds.ToString().PadLeft(3, '0')));
+        return (string.Format(LangTimeCounterTips, _compareStopWatch.Elapsed.Minutes.ToString().PadLeft(2, '0'), _compareStopWatch.Elapsed.Seconds.ToString().PadLeft(2, '0'), _compareStopWatch.Elapsed.Milliseconds.ToString().PadLeft(3, '0')));
     }
 
-    private string _nowStringTip = "[<color=#5ADD53FF>今日修改！</color>]";
-    private string _dirTip = "[<color=yellow>文件夹</color>]";
     private string CalcDisplayPathStr(int index, string path)
     {
         bool exist = Directory.Exists(path) || File.Exists(path);
         DateTime date = exist ? File.GetLastWriteTime(path) : DateTime.MaxValue;
         if (!exist)
         {
-            return (string.Format("<color=red>内部错误：{0}</color>", path));
+            return (string.Format(LangInternalError, path));
         }
         bool isNow = (date.Year == DateTime.Now.Year && date.DayOfYear == DateTime.Now.DayOfYear);
         bool isDir = Directory.Exists(path);
@@ -256,10 +215,10 @@ public class FileCompareWindow : EditorWindow
         {
             path = _fileCompare.GetLeftPathByRightPath(path);
             if (!Directory.Exists(path) && !File.Exists(path))
-                isNullStr = "<color=red>原始目录资源不存在！</color>";
+                isNullStr = LangNullFilePath;
             path = string.Format("<b>{0}</b>", path);
         }
-        return (string.Format("{0}. {3}[{1}] {2}{4} {5}", (index).ToString().PadLeft(3, '0'), date.ToString("yyyy-MM-dd hh:mm:ss"), path, isNow ? _nowStringTip : string.Empty, isDir ? _dirTip : string.Empty, isNullStr));
+        return (string.Format("{0}. {3}[{1}] {2}{4} {5}", (index).ToString().PadLeft(3, '0'), date.ToString("yyyy-MM-dd hh:mm:ss"), path, isNow ? LangTodayMofiyTips : string.Empty, isDir ? LangDir : string.Empty, isNullStr));
     }
     //================UI封装============================
     /// <summary>
@@ -268,7 +227,7 @@ public class FileCompareWindow : EditorWindow
     private void DrawPathSelector(string title, ref string path)
     {
         EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField(title + path);
+        EditorGUILayout.LabelField(title + (string.IsNullOrEmpty(path) ? LangNotPath : path), _normalRichTextStyle);
         if (GUILayout.Button("选择", GUILayout.Width(70)))
         {
             OpenDirChoose(ref path);
@@ -342,7 +301,7 @@ public class FileCompareWindow : EditorWindow
                 _editExcludeSuffix = false;
             }
             EditorGUILayout.EndHorizontal();
-            EditorGUILayout.HelpBox("若有多个需要排除的后缀，请以 “|” 分割。(如：“.meta|.txt|.mp4”)", MessageType.Info);
+            EditorGUILayout.HelpBox(LangExcludeSuffixHelp, MessageType.Info);
             EditorGUILayout.EndVertical();
         }
         else
@@ -351,7 +310,7 @@ public class FileCompareWindow : EditorWindow
             if (GUILayout.Button("编辑", GUILayout.Width(70)))
             {
                 _editExcludeSuffix = true;
-            }
+            }  
         }
     }
 
@@ -363,7 +322,7 @@ public class FileCompareWindow : EditorWindow
         EditorGUILayout.BeginHorizontal();
         if (GUILayout.Button("全选", GUILayout.Width(70)))
         {
-            if (EditorUtility.DisplayDialog("提示", "该操作将会使创建补丁时，当前所有差异文件均使用源目录中同路径文件，是否确认选择？", "确定", "取消"))
+            if (EditorUtility.DisplayDialog(LangTipsTitle, LangUseLeftFileForCreatePatchTips, LangOk, LangCancel))
             {
                 _fileCompare.Info.CreatePatchUseLeftFile.Clear();
                 _fileCompare.Info.CreatePatchUseLeftFile.AddRange(_compareResult);
@@ -372,13 +331,13 @@ public class FileCompareWindow : EditorWindow
         }
         if (GUILayout.Button("清空", GUILayout.Width(70)))
         {
-            if (EditorUtility.DisplayDialog("提示", "是否确认清空使用源的路径选择？", "确定", "取消"))
+            if (EditorUtility.DisplayDialog(LangTipsTitle, LangConfirmClearUseLeftFileForCreatePatchSelectTips, LangOk, LangCancel))
             {
                 _fileCompare.Info.CreatePatchUseLeftFile.Clear();
                 Save();
             }
         }
-        EditorGUILayout.LabelField("<color=#4DFF7AFF>勾选选中框，代表创建补丁时，使用源目录同路径下文件(若存在)</color>", _normalRichTextStyle);
+        EditorGUILayout.LabelField(LangUseLeftFileForCreatePatchHelp, _normalRichTextStyle);
         EditorGUILayout.EndHorizontal();
     }
 
@@ -489,4 +448,25 @@ public class FileCompareWindow : EditorWindow
         _fileCompare.SaveSetting();
     }
 
+    //=================实体文字============================
+    private const string LangNotPath = "<color=red>注意：未选择目录！</color>";
+    private const string LangNullFilePath = "<color=red>原始目录资源不存在！</color>";
+    private const string LangInternalError = "<color=red>内部错误：{0}</color>";
+    private const string LangTodayMofiyTips = "[<color=#5ADD53FF>今日修改！</color>]";
+    private const string LangDir = "[<color=yellow>文件夹</color>]";
+    private const string LangTimeCounterTips = "**********************************消耗：{0}:{1}:{2}************************************";
+    private const string LangCompareSummaryTips = "  共对比<color=yellow>{0}</color>个文件目录，差异文件数量：<color=#00F4FFFF>{1}</color>个";
+    private const string LangHelp1 = "比较时，将以 “对比目录” 数据为基础与原始目录进行比较，并得出差异化文件或目录。";
+    private const string LangHelp2 = "勾选同步日期时，在两个文件二进制一致情况， 会同步对比目录与原始目录一致。第一次对比时长会增加，不过同时会减少下次对比时消耗的时间。";
+    private const string LangHelp3 = "注：线程数量限制针对于文件夹，文件对比时还会额外并发。";
+    private const string LangExcludeSuffixHelp = "若有多个需要排除的后缀，请以 “|” 分割。(如：“.meta|.txt|.mp4”)";
+    private const string LangTipsTitle = "提示";
+    private const string LangOk = "确定";
+    private const string LangCancel = "取消";
+    private const string LangUseLeftFileForCreatePatchTips = "该操作将会使创建补丁时，当前所有差异文件均使用源目录中同路径文件，是否确认选择？";
+    private const string LangConfirmClearUseLeftFileForCreatePatchSelectTips = "是否确认清空使用源的路径选择？";
+    private const string LangUseLeftFileForCreatePatchHelp = "<color=#4DFF7AFF>勾选选中框，代表创建补丁时，使用源目录同路径下文件(若存在)</color>";
+
+
+    //==================================================
 }
