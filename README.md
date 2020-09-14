@@ -1,7 +1,12 @@
 # FastFileCompare
 多线程实现的快速文件对比工具，提供UI界面进行对比设置及可视化操作，并提供核心类供代码直接调用。
 
-![](https://github.com/CWHISME/FastFileCompare/blob/master/RawImg/Snipaste_2020-07-04_11-22-41.png?raw=true)
+![](https://github.com/CWHISME/FastFileCompare/master/RawImg/Snipaste_2020-09-14_11-44-18)
+
+## 目的
+
+开始是为了热更设计，方便直接对比出包原始资源及当前项目更改后资源，创建其差异化热更补丁包。
+核心类仅使用Unity的Json类作为数据保存手段，如果需要Unity之外使用，可简单替换或者使用UnityEngine.dll替代，亦或者将数据保存功能剥离使用。
 
 ## 使用
 
