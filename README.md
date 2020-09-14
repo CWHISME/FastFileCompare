@@ -1,7 +1,7 @@
 # FastFileCompare
 多线程实现的快速文件对比工具，提供UI界面进行对比设置及可视化操作，并提供核心类供代码直接调用。
 
-![](https://github.com/CWHISME/Unity3D-CheatSystem/raw/master/RawImg/Snipaste_2020-07-04_11-22-41.png)
+![](https://github.com/CWHISME/FastFileCompare/blob/master/RawImg/Snipaste_2020-07-04_11-22-41.png?raw=true)
 
 ## 使用
 
