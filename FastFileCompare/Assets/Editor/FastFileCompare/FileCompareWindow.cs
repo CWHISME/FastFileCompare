@@ -310,7 +310,7 @@ public class FileCompareWindow : EditorWindow
             if (GUILayout.Button("编辑", GUILayout.Width(70)))
             {
                 _editExcludeSuffix = true;
-            }  
+            }
         }
     }
 
@@ -412,9 +412,9 @@ public class FileCompareWindow : EditorWindow
             if (_fileCompare.Info.MustConfirmDiffPatchPath || string.IsNullOrEmpty(_fileCompare.Info.DiffPatchPath))
             {
                 if (OpenDirChoose(ref _fileCompare.Info.DiffPatchPath))
-                    _fileCompare.CreatePatch(_compareResult, "Patcher", _fileCompare.Info.IsCompressDiffFile, OnCompareStep, OnCreatePatchEnd);
+                    _fileCompare.CreatePatch(_compareResult, "", "Patcher", _fileCompare.Info.IsCompressDiffFile, OnCompareStep, OnCreatePatchEnd);
             }
-            else _fileCompare.CreatePatch(_compareResult, "Patcher", _fileCompare.Info.IsCompressDiffFile, OnCompareStep, OnCreatePatchEnd);
+            else _fileCompare.CreatePatch(_compareResult, "", "Patcher", _fileCompare.Info.IsCompressDiffFile, OnCompareStep, OnCreatePatchEnd);
         }
         EditorGUI.BeginChangeCheck();
         _fileCompare.Info.MustConfirmDiffPatchPath = EditorGUILayout.ToggleLeft("始终询问保存目录", _fileCompare.Info.MustConfirmDiffPatchPath, GUILayout.Width(110));

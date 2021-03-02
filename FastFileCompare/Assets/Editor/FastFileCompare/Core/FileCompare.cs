@@ -57,6 +57,16 @@ public class FileCompare
     private void Init(string infoSaverPath)
     {
         _infoSaverPath = infoSaverPath;
+        ReloadConfig();
+    }
+
+    //====================Public DO==============================
+
+    /// <summary>
+    /// 重新于磁盘加载配置
+    /// </summary>
+    public void ReloadConfig()
+    {
         if (File.Exists(SaveInfoFIle))
         {
             _info = JsonUtility.FromJson<InfoSetting>(File.ReadAllText(SaveInfoFIle));
@@ -67,10 +77,11 @@ public class FileCompare
             _info = new InfoSetting();
             //初始化对比目录：我们假设始终为项目的 StreamingAssets
             _info.RightComprePath = Application.streamingAssetsPath;
+            //保存
+            SaveSetting();
         }
     }
 
-    //====================Public DO==============================
     /// <summary>
     /// 进行一次比较
     /// </summary>
@@ -130,14 +141,14 @@ public class FileCompare
     /// <param name="compress">是否压缩</param>
     /// <param name="onStep"></param>
     /// <param name="onEnd"></param>
-    public void CreatePatch(List<string> path, string suffix, bool compress = false, Action<int, int> onStep = null, Action<string> onEnd = null)
+    public void CreatePatch(List<string> path, string prefix, string suffix, bool compress = false, Action<int, int> onStep = null, Action<string> onEnd = null)
     {
         if (string.IsNullOrEmpty(Info.DiffPatchPath))
         {
             if (onEnd != null) onEnd.Invoke("");
             return;
         };
-        string targetPath = Path.Combine(Info.DiffPatchPath, string.Format("{0}_{1}_{2}_[{3}]", Application.platform, Info.LastVersion, DateTime.Now.ToString("yyyyMMdd-HHmm-ss"), suffix));
+        string targetPath = Path.Combine(Info.DiffPatchPath, string.Format("{0}_{1}_{2}_{3}", prefix, Info.LastVersion, DateTime.Now.ToString("yyyyMMdd-HHmm-ss"), suffix));
         if (Directory.Exists(targetPath))
             Directory.Delete(targetPath, true);
         Directory.CreateDirectory(targetPath);
